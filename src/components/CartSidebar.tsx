@@ -1,14 +1,73 @@
+import { useState, useEffect } from 'react';
 import { X, Plus, Minus, Trash2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { Button } from './Button';
+import { supabase } from '../lib/supabase';
 
 interface CartSidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+interface CheckoutForm {
+  name: string;
+  phone: string;
+  address: string;
+  bust: string;
+  waist: string;
+  hip: string;
+  height: string;
+  pantLength: string;
+}
+
 export function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
-  const { items, removeItem, updateQuantity, getTotalPrice, getTotalItems, clearCart } = useCart();
+  const { items, removeItem, updateQuantity, getTotalPrice, clearCart } = useCart();
+  const { user } = useAuth();
+  const [step, setStep] = useState<'cart' | 'checkout'>('cart');
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState<CheckoutForm>({
+    name: '',
+    phone: '',
+    address: '',
+    bust: '',
+    waist: '',
+    hip: '',
+    height: '',
+    pantLength: '',
+  });
+
+  useEffect(() => {
+    if (step === 'checkout' && user) {
+      fetchUserProfile();
+    }
+  }, [step, user]);
+
+  const fetchUserProfile = async () => {
+    try {
+      setLoading(true);
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .maybeSingle();
+
+      if (data) {
+        setFormData({
+          name: data.first_name || '',
+          phone: data.phone || '',
+          address: data.address || '',
+          bust: data.bust_size || '',
+          waist: data.waist_size || '',
+          hip: data.hip_size || '',
+          height: data.height || '',
+          pantLength: data.pant_length || '',
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatWhatsAppMessage = () => {
     if (items.length === 0) return '';
@@ -18,17 +77,25 @@ export function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
       .join('%0A');
 
     const total = getTotalPrice();
-    const message = `Hi! I'd like to place an order for the following items:%0A%0A${itemsList}%0A%0ATotal: ₦${total.toLocaleString()}%0A%0APlease confirm availability and arrange delivery. Thank you!`;
+    const measurements = `%0A%0A*Measurements:*%0ABust: ${formData.bust || 'Not provided'}%0AWaist: ${formData.waist || 'Not provided'}%0AHips: ${formData.hip || 'Not provided'}%0AHeight: ${formData.height || 'Not provided'}%0APant Length: ${formData.pantLength || 'Not provided'}`;
+
+    const message = `Hi! I'd like to place an order.%0A%0A*Items:*%0A${itemsList}%0A%0A*Customer Information:*%0AName: ${formData.name}%0APhone: ${formData.phone}%0AAddress: ${formData.address}${measurements}%0A%0A*Total: ₦${total.toLocaleString()}*%0A%0APlease confirm availability and arrange delivery. Thank you!`;
 
     return message;
   };
 
-  const handleWhatsAppCheckout = () => {
-    if (items.length === 0) return;
+  const handleCompleteOrder = () => {
+    if (!formData.name || !formData.phone || !formData.address) {
+      alert('Please fill in all contact information');
+      return;
+    }
 
     const message = formatWhatsAppMessage();
     const whatsappLink = `https://wa.me/2348012345678?text=${message}`;
     window.open(whatsappLink, '_blank');
+    clearCart();
+    setStep('cart');
+    onClose();
   };
 
   return (
@@ -43,9 +110,14 @@ export function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
         }`}
       >
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-maroon-900">Your Cart</h2>
+          <h2 className="text-xl font-bold text-maroon-900 font-serif">
+            {step === 'cart' ? 'Your Cart' : 'Complete Order'}
+          </h2>
           <button
-            onClick={onClose}
+            onClick={() => {
+              setStep('cart');
+              onClose();
+            }}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <X size={24} />
@@ -59,7 +131,7 @@ export function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
               Continue Shopping
             </Button>
           </div>
-        ) : (
+        ) : step === 'cart' ? (
           <>
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {items.map((item) => (
@@ -119,18 +191,15 @@ export function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
                   <span>Total:</span>
                   <span>₦{getTotalPrice().toLocaleString()}</span>
                 </div>
-                <p className="text-xs text-green-700 bg-green-50 px-3 py-2 rounded-lg text-center font-medium">
-                  Free Shipping to Abuja & Lagos
-                </p>
               </div>
 
               <Button
                 variant="primary"
                 size="lg"
-                onClick={handleWhatsAppCheckout}
+                onClick={() => setStep('checkout')}
                 className="w-full"
               >
-                Checkout via WhatsApp
+                Proceed to Checkout
               </Button>
 
               <Button
@@ -148,6 +217,154 @@ export function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
               >
                 Clear Cart
               </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <h3 className="font-semibold text-maroon-900">Contact Information</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    disabled={loading}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-maroon-900 disabled:bg-gray-100 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    disabled={loading}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-maroon-900 disabled:bg-gray-100 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Address
+                  </label>
+                  <textarea
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    disabled={loading}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-maroon-900 disabled:bg-gray-100 text-sm resize-none"
+                  />
+                </div>
+              </div>
+
+              <h3 className="font-semibold text-maroon-900 pt-2">Measurements</h3>
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Bust
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.bust}
+                      onChange={(e) => setFormData({ ...formData, bust: e.target.value })}
+                      disabled={loading}
+                      placeholder="e.g., 34"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-maroon-900 disabled:bg-gray-100 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Waist
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.waist}
+                      onChange={(e) => setFormData({ ...formData, waist: e.target.value })}
+                      disabled={loading}
+                      placeholder="e.g., 28"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-maroon-900 disabled:bg-gray-100 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Hip
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.hip}
+                      onChange={(e) => setFormData({ ...formData, hip: e.target.value })}
+                      disabled={loading}
+                      placeholder="e.g., 36"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-maroon-900 disabled:bg-gray-100 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Height
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.height}
+                      onChange={(e) => setFormData({ ...formData, height: e.target.value })}
+                      disabled={loading}
+                      placeholder="e.g., 170"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-maroon-900 disabled:bg-gray-100 text-sm"
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Pant Length
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.pantLength}
+                      onChange={(e) => setFormData({ ...formData, pantLength: e.target.value })}
+                      disabled={loading}
+                      placeholder="e.g., 32"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-maroon-900 disabled:bg-gray-100 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-gray-200 mt-4">
+                <div className="text-lg font-bold text-maroon-900">
+                  Total: ₦{getTotalPrice().toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 p-6 space-y-3 bg-gray-50">
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={handleCompleteOrder}
+                disabled={loading}
+                className="w-full"
+              >
+                Complete Order
+              </Button>
+
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => setStep('cart')}
+                className="w-full"
+              >
+                Back to Cart
+              </Button>
             </div>
           </>
         )}
