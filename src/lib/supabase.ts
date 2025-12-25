@@ -14,7 +14,7 @@ export const supabase = supabaseUrl && supabaseAnonKey
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('🚨 Supabase Keys are missing! Check your .env file.');
 }
-
+ 
 export interface Product {
   id: string;
   name: string;
