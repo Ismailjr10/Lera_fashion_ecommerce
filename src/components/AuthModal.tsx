@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import { X } from 'lucide-react';
 import { Modal } from './Modal';
 import { Button } from './Button';
@@ -26,15 +27,15 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     try {
       if (isSignUp) {
         if (password !== confirmPassword) {
-          setError('Passwords do not match');
+          toast.error('Passwords do not match');
           setLoading(false);
           return;
         }
         const { error } = await signUp(email, password);
         if (error) {
-          setError(error);
+          toast.error(error);
         } else {
-          setError('Check your email to confirm your account');
+          toast.success('Account created! Check your email.');
           setTimeout(() => {
             onClose();
           }, 2000);
@@ -42,8 +43,9 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       } else {
         const { error } = await signIn(email, password);
         if (error) {
-          setError(error);
+          toast.error(error);
         } else {
+          toast.success('Welcome back!');
           onClose();
         }
       }

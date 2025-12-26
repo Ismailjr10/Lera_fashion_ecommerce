@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { X } from 'lucide-react';
 import { Modal } from './Modal';
 import { Button } from './Button';
@@ -68,7 +69,9 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load profile');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to load profile';
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -99,12 +102,15 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 
       if (err) throw err;
 
+      toast.success('Profile saved successfully!');
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
       }, 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save profile');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to save profile';
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setSaving(false);
     }

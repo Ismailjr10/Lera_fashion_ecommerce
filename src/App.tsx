@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Toaster } from 'react-hot-toast';
 import { CartProvider } from './context/CartContext';
 import { ProductsProvider } from './context/ProductsContext';
 import { AuthProvider } from './context/AuthContext';
@@ -33,6 +34,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-white">
+      <Toaster position="top-center" />
       <Navbar
         onCartClick={() => setIsCartOpen(true)}
         onSearchClick={() => setIsSearchOpen(true)}

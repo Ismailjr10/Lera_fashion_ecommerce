@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { X, Plus, Minus, Trash2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -86,10 +87,11 @@ export function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
 
   const handleCompleteOrder = () => {
     if (!formData.name || !formData.phone || !formData.address) {
-      alert('Please fill in all contact information');
+      toast.error('Please fill in all contact information');
       return;
     }
 
+    toast.success('Opening WhatsApp...');
     const message = formatWhatsAppMessage();
     const whatsappLink = `https://wa.me/2348012345678?text=${message}`;
     window.open(whatsappLink, '_blank');
@@ -347,15 +349,13 @@ export function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
             </div>
 
             <div className="border-t border-gray-200 p-6 space-y-3 bg-gray-50">
-              <Button
-                variant="primary"
-                size="lg"
+              <button
                 onClick={handleCompleteOrder}
                 disabled={loading}
-                className="w-full"
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Complete Order
-              </Button>
+              </button>
 
               <Button
                 variant="outline"
