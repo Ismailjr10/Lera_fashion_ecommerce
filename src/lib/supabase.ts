@@ -1,20 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Default to empty strings to prevent the "undefined" crash
+// 1. Get the keys (or use empty strings)
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-// Only create the client if we have a valid URL, otherwise create a "dummy" client
-// This prevents the white screen of death
-export const supabase = supabaseUrl && supabaseAnonKey
+// 2. CRASH PREVENTION: Only create the real client if keys exist.
+// If keys are missing, we create a fake one so the app loads (and you can see the error).
+export const supabase = (supabaseUrl && supabaseAnonKey)
   ? createClient(supabaseUrl, supabaseAnonKey)
   : createClient('https://placeholder.supabase.co', 'placeholder-key');
 
-// Log a clear warning if keys are missing so you know why data isn't loading
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('🚨 Supabase Keys are missing! Check your .env file.');
-}
- 
+// 3. Log a warning so you know if it's working
+if (!supabaseUrl) console.error('🚨 Supabase URL is missing!');
+
 export interface Product {
   id: string;
   name: string;
