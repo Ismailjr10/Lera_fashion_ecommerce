@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase, Review } from '../lib/supabase';
 
 export function useProductReviews(productId: string) {
@@ -6,9 +6,11 @@ export function useProductReviews(productId: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 1. Fetch Reviews (Safe Logic)
   const fetchReviews = useCallback(async () => {
-    // 🛑 STOP: If there is no ID, don't fetch!
+    // If no ID is provided, just reset state but DO NOT return early from the hook itself
     if (!productId) {
+      setReviews([]);
       setLoading(false);
       return;
     }
@@ -25,13 +27,13 @@ export function useProductReviews(productId: string) {
       setReviews(data || []);
     } catch (err) {
       console.error('Error fetching reviews:', err);
-      // We don't set the error state here to avoid crashing the UI
-      // just because reviews failed to load. We fail silently.
+      // Fail silently to avoid UI crash
     } finally {
       setLoading(false);
     }
   }, [productId]);
 
+  // 2. Add Review Logic
   const addReview = async (review: Omit<Review, 'id' | 'created_at' | 'is_verified'>) => {
     if (!productId) return null;
     
@@ -51,9 +53,28 @@ export function useProductReviews(productId: string) {
     }
   };
 
+  // 3. Initial Fetch
   useEffect(() => {
     fetchReviews();
   }, [fetchReviews]);
 
-  return { reviews, loading, error, addReview };
+  // 4. Calculate Statistics (Average & Count)
+  // This fixes the missing data in QuickViewModal
+  const stats = useMemo(() => {
+    const count = reviews.length;
+    const totalRating = reviews.reduce((acc, review) => acc + review.rating, 0);
+    const average = count > 0 ? totalRating / count : 0;
+    
+    return { count, average };
+  }, [reviews]);
+
+  // Return everything the Modal needs
+  return { 
+    reviews, 
+    loading, 
+    error, 
+    addReview,
+    average: stats.average, 
+    count: stats.count 
+  };
 }
