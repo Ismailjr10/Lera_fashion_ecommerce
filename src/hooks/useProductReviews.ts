@@ -2,13 +2,15 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase, Review } from '../lib/supabase';
 
 export function useProductReviews(productId: string) {
+  // 1. Always declare ALL state hooks at the top
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Default to false to prevent UI flicker
   const [error, setError] = useState<string | null>(null);
 
-  // 1. Fetch Reviews (Safe Logic)
+  // 2. Define the fetch function
   const fetchReviews = useCallback(async () => {
-    // If no ID is provided, just reset state but DO NOT return early from the hook itself
+    // 🛑 SAFETY CHECK: If ID is empty, clear data and stop.
+    // But we are INSIDE the callback, so this is safe.
     if (!productId) {
       setReviews([]);
       setLoading(false);
@@ -27,13 +29,13 @@ export function useProductReviews(productId: string) {
       setReviews(data || []);
     } catch (err) {
       console.error('Error fetching reviews:', err);
-      // Fail silently to avoid UI crash
+      // Don't crash the UI for review errors
     } finally {
       setLoading(false);
     }
   }, [productId]);
 
-  // 2. Add Review Logic
+  // 3. Define the Add Review function
   const addReview = async (review: Omit<Review, 'id' | 'created_at' | 'is_verified'>) => {
     if (!productId) return null;
     
@@ -53,13 +55,12 @@ export function useProductReviews(productId: string) {
     }
   };
 
-  // 3. Initial Fetch
+  // 4. Run the Effect (This must always run)
   useEffect(() => {
     fetchReviews();
   }, [fetchReviews]);
 
-  // 4. Calculate Statistics (Average & Count)
-  // This fixes the missing data in QuickViewModal
+  // 5. Calculate Stats
   const stats = useMemo(() => {
     const count = reviews.length;
     const totalRating = reviews.reduce((acc, review) => acc + review.rating, 0);
@@ -68,7 +69,6 @@ export function useProductReviews(productId: string) {
     return { count, average };
   }, [reviews]);
 
-  // Return everything the Modal needs
   return { 
     reviews, 
     loading, 
