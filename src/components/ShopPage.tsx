@@ -9,6 +9,22 @@ interface ShopPageProps {
   onQuickView: (product: Product) => void;
 }
 
+// ✅ FIX: Create a Wrapper Component
+// This lets us call the hook at the top level for each product, which is legal.
+const ProductItem = ({ product, onQuickView }: { product: Product; onQuickView: (p: Product) => void }) => {
+  // Now the hook is happy because it's not inside a loop in this component context
+  const { average, count } = useProductReviews(product.id);
+  
+  return (
+    <ProductCard
+      product={product}
+      averageRating={average}
+      reviewCount={count}
+      onQuickView={onQuickView}
+    />
+  );
+};
+
 export function ShopPage({ onQuickView }: ShopPageProps) {
   const { products, loading } = useProducts();
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -187,18 +203,14 @@ export function ShopPage({ onQuickView }: ShopPageProps) {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProducts.map(product => {
-                  const { average, count } = useProductReviews(product.id);
-                  return (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      averageRating={average}
-                      reviewCount={count}
-                      onQuickView={onQuickView}
-                    />
-                  );
-                })}
+                {/* ✅ FIX: Map to the Wrapper Component instead of calling the hook directly */}
+                {filteredProducts.map(product => (
+                  <ProductItem
+                    key={product.id}
+                    product={product}
+                    onQuickView={onQuickView}
+                  />
+                ))}
               </div>
             )}
           </div>
