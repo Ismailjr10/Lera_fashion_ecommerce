@@ -19,9 +19,14 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
   const [addedToCart, setAddedToCart] = useState(false);
+  
   const { addItem } = useCart();
+
+  // 🚨 CRITICAL FIX: The Hook MUST be called here, unconditionally.
+  // We pass (product?.id || '') so it runs even if product is null.
   const { average, count, reviews } = useProductReviews(product?.id || '');
 
+  // 🛑 Logic check: NOW we can check if product exists
   if (!product) return null;
 
   const handleAddToCart = () => {
@@ -75,96 +80,95 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
 
           <div>
             <p className="text-3xl font-bold text-maroon-900">₦{product.price.toLocaleString()}</p>
-            {product.is_low_stock && (
-              <p className="text-sm text-red-600 mt-2 font-semibold animate-pulse">
-                Only {product.stock_quantity} items in stock!
-              </p>
-            )}
           </div>
 
-          {product.colors.length > 0 && (
+          {/* Color Selection */}
+          {product.colors && product.colors.length > 0 && (
             <div>
-              <label className="block text-sm font-semibold text-maroon-900 mb-2">
-                Color
-              </label>
-              <select
-                value={selectedColor}
-                onChange={(e) => setSelectedColor(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-maroon-900"
-              >
-                <option value="">Select a color</option>
+              <h3 className="font-semibold text-gray-900 mb-2">Color</h3>
+              <div className="flex gap-2">
                 {product.colors.map((color) => (
-                  <option key={color} value={color}>
+                  <button
+                    key={color}
+                    onClick={() => setSelectedColor(color)}
+                    className={`px-4 py-2 rounded-full border transition-all ${
+                      selectedColor === color
+                        ? 'border-maroon-900 bg-maroon-50 text-maroon-900'
+                        : 'border-gray-200 hover:border-maroon-900'
+                    }`}
+                  >
                     {color}
-                  </option>
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
           )}
 
-          {product.sizes.length > 0 && (
+          {/* Size Selection */}
+          {product.sizes && product.sizes.length > 0 && (
             <div>
-              <label className="block text-sm font-semibold text-maroon-900 mb-2">
-                Size
-              </label>
-              <select
-                value={selectedSize}
-                onChange={(e) => setSelectedSize(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-maroon-900"
-              >
-                <option value="">Select a size</option>
+              <h3 className="font-semibold text-gray-900 mb-2">Size</h3>
+              <div className="flex gap-2">
                 {product.sizes.map((size) => (
-                  <option key={size} value={size}>
+                  <button
+                    key={size}
+                    onClick={() => setSelectedSize(size)}
+                    className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all ${
+                      selectedSize === size
+                        ? 'border-maroon-900 bg-maroon-50 text-maroon-900'
+                        : 'border-gray-200 hover:border-maroon-900'
+                    }`}
+                  >
                     {size}
-                  </option>
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-semibold text-maroon-900 mb-2">
-              Quantity
-            </label>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <Minus size={20} />
-              </button>
-              <span className="text-xl font-semibold text-maroon-900 min-w-8 text-center">{quantity}</span>
-              <button
-                onClick={() => setQuantity(Math.min(product.stock_quantity, quantity + 1))}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <Plus size={20} />
-              </button>
-            </div>
+          <div className="mt-auto pt-6">
+             <div className="flex items-center gap-4 mb-4">
+               <button 
+                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+               >
+                 <Minus size={20} />
+               </button>
+               <span className="font-bold text-xl w-8 text-center">{quantity}</span>
+               <button 
+                 onClick={() => setQuantity(Math.min(product.stock_quantity, quantity + 1))}
+                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+               >
+                 <Plus size={20} />
+               </button>
+             </div>
+
+            <Button
+              variant="primary"
+              size="lg"
+              className={`w-full ${addedToCart ? 'bg-green-600 hover:bg-green-700' : ''}`}
+              onClick={handleAddToCart}
+              disabled={product.stock_quantity === 0}
+            >
+              {product.stock_quantity === 0 
+                ? 'Out of Stock' 
+                : addedToCart 
+                  ? 'Added to Cart!' 
+                  : 'Add to Cart'}
+            </Button>
           </div>
 
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={handleAddToCart}
-            className={addedToCart ? 'bg-green-600 hover:bg-green-600' : ''}
-          >
-            {addedToCart ? '✓ Added to Cart!' : 'Add to Cart'}
-          </Button>
-
+          {/* Reviews Section */}
           {reviews.length > 0 && (
             <div className="mt-4 pt-4 border-t border-gray-200">
               <h3 className="font-semibold text-maroon-900 mb-3">Recent Reviews</h3>
               <div className="space-y-3 max-h-48 overflow-y-auto">
                 {reviews.slice(0, 3).map((review) => (
-                  <div key={review.id} className="text-sm">
+                  <div key={review.id} className="text-sm bg-gray-50 p-3 rounded-lg">
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-semibold text-gray-800">{review.reviewer_name}</span>
                       <StarRating rating={review.rating} size="sm" />
                     </div>
-                    {review.is_verified && (
-                      <Badge text="Verified" variant="verified" />
-                    )}
                     <p className="text-gray-600 mt-1">{review.comment}</p>
                   </div>
                 ))}
